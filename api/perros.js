@@ -8,21 +8,41 @@ module.exports = async function handler(req, res) {
     const h2 = await r2.text();
 
     function parsear(html, tipo) {
-      const re = /href="(\/(?:perros|gatos)-en-adopcion\/i\/\d+\/([^"]+))"/g;
+      const re = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
       const reImg = /src="(https:\/\/cmsphoto\.ww-cdn\.com\/superstatic[^"]+large_16_9[^"]+)"/g;
       const links = [...html.matchAll(re)];
       const imgs = [...html.matchAll(reImg)];
-      return links.map(function(m, i) {
-        return {
+      
+      const vistos = {};
+      const items = [];
+      
+      links.forEach(function(m, i) {
+        const id = m[2];
+        if (vistos[id]) return;
+        vistos[id] = true;
+        
+        if (!imgs[i]) return;
+        
+        const nombre = m[3]
+          .replace(/^copia-de-/, '')
+          .replace(/-/g, ' ')
+          .replace(/^\w/, function(c) { return c.toUpperCase(); });
+        
+        items.push({
           url: m[1],
-          foto: imgs[i] ? imgs[i][1] : '',
-          nombre: m[2].replace(/^copia-de-/, '').replace(/-/g, ' ').replace(/^\w/, function(c) { return c.toUpperCase(); }),
+          foto: imgs[i][1],
+          nombre: nombre,
           tipo: tipo
-        };
-      }).filter(function(p) { return p.foto; });
+        });
+      });
+      
+      return items;
     }
 
-    var todos = parsear(h1, 'perro').concat(parsear(h2, 'gato'));
+    var perros = parsear(h1, 'perro');
+    var gatos = parsear(h2, 'gato');
+    var todos = perros.concat(gatos).sort(function() { return Math.random() - 0.5; });
+    
     res.status(200).json({ perros: todos });
   } catch(e) {
     res.status(500).json({ error: e.message });
