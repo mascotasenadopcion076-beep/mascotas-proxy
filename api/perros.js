@@ -8,33 +8,27 @@ module.exports = async function handler(req, res) {
     const h2 = await r2.text();
 
     function parsear(html, tipo) {
-      const reLink = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
-      const reImg = /src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
-      const links = [...html.matchAll(reLink)];
-      const imgs = [...html.matchAll(reImg)];
-      
-      const vistos = {};
+      const reLink = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"[^>]*>\s*<[^>]*>\s*<img[^>]*src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
       const items = [];
+      const vistos = {};
       
-      links.forEach(function(m, i) {
+      var m;
+      while ((m = reLink.exec(html)) !== null) {
         const id = m[2];
-        if (vistos[id]) return;
+        if (vistos[id]) continue;
         vistos[id] = true;
-        if (!imgs[i]) return;
         
         const nombre = m[3]
-          .replace(/^copia-de-/, '')
           .replace(/-/g, ' ')
           .replace(/^\w/, function(c) { return c.toUpperCase(); });
         
         items.push({
           url: m[1],
-          foto: imgs[i][1],
+          foto: m[4],
           nombre: nombre,
           tipo: tipo
         });
-      });
-      
+      }
       return items;
     }
 
