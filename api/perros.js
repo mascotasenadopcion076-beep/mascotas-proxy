@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   try {
@@ -14,7 +14,4 @@ export default async function handler(req, res) {
       const reImg = /src="(https:\/\/cmsphoto\.ww-cdn\.com\/superstatic[^"]+large_16_9[^"]+)"/g;
       const links = [...html.matchAll(re)];
       const imgs = [...html.matchAll(reImg)];
-      return links.map((m, i) => ({
-        url: m[1],
-        foto: imgs[i] ? imgs[i][1] : '',
-        nombre: m[2].rep
+      retu
