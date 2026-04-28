@@ -7,51 +7,49 @@ module.exports = async function handler(req, res) {
     const h1 = await r1.text();
     const h2 = await r2.text();
 
-  
     function parsear(html, tipo) {
-      const reLink = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
-      const reImg = /data-src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"|src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
-      
-      const links = [...html.matchAll(reLink)];
-      const imgs = [...html.matchAll(reImg)];
-      
       const vistos = {};
       const items = [];
-      var imgIndex = 0;
       
-      links.forEach(function(m) {
+      // Buscar cada bloque de item: link + título + imagen juntos
+      const bloqueRe = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/[^"]+)"[\s\S]{0,500}?<(?:h\d|div|span)[^>]*class="[^"]*(?:title|nombre|name)[^"]*"[^>]*>([\s\S]{0,100}?)<\/(?:h\d|div|span)>[\s\S]{0,500}?src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
+      
+      var m;
+      while ((m = bloqueRe.exec(html)) !== null) {
         const id = m[2];
-        if (vistos[id]) return;
+        if (vistos[id]) continue;
         vistos[id] = true;
         
-        // buscar la imagen que está cerca de este link en el HTML
-        const linkPos = m.index;
-        var bestImg = null;
-        var bestDist = Infinity;
+        const nombre = m[3].replace(/<[^>]+>/g, '').trim();
+        if (!nombre) continue;
         
-        imgs.forEach(function(img) {
-          const dist = Math.abs(img.index - linkPos);
-          if (dist < bestDist) {
-            bestDist = dist;
-            bestImg = img[1] || img[2];
-          }
+        items.push({
+          url: m[1],
+          foto: m[4],
+          nombre: nombre,
+          tipo: tipo
         });
+      }
+      
+      // Fallback: si no encontró nada con el método anterior, usar slug
+      if (items.length === 0) {
+        const reLink = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
+        const reImg = /src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
+        const links = [...html.matchAll(reLink)];
+        const imgs = [...html.matchAll(reImg)];
         
-        if (!bestImg) return;
-        
-        const nombre = m[3]
-          .replace(/-/g, ' ')
-          .replace(/^\w/, function(c) { return c.toUpperCase(); });
-        
-var fotoHD = bestImg;
-
-items.push({
-  url: m[1],
-  foto: fotoHD,
-  nombre: nombre,
-  tipo: tipo
-});
-      });
+        links.forEach(function(lm, i) {
+          const id = lm[2];
+          if (vistos[id] || !imgs[i]) return;
+          vistos[id] = true;
+          items.push({
+            url: lm[1],
+            foto: imgs[i][1],
+            nombre: lm[3].replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase()),
+            tipo: tipo
+          });
+        });
+      }
       
       return items;
     }
