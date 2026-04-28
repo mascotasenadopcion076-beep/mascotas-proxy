@@ -8,9 +8,9 @@ module.exports = async function handler(req, res) {
     const h2 = await r2.text();
 
     function parsear(html, tipo) {
-      const re = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
-      const reImg = /src="(https:\/\/cmsphoto\.ww-cdn\.com\/superstatic[^"]+large_16_9[^"]+)"/g;
-      const links = [...html.matchAll(re)];
+      const reLink = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
+      const reImg = /src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
+      const links = [...html.matchAll(reLink)];
       const imgs = [...html.matchAll(reImg)];
       
       const vistos = {};
@@ -20,7 +20,6 @@ module.exports = async function handler(req, res) {
         const id = m[2];
         if (vistos[id]) return;
         vistos[id] = true;
-        
         if (!imgs[i]) return;
         
         const nombre = m[3]
@@ -43,7 +42,7 @@ module.exports = async function handler(req, res) {
     var gatos = parsear(h2, 'gato');
     var todos = perros.concat(gatos).sort(function() { return Math.random() - 0.5; });
     
-    res.status(200).json({ perros: todos });
+    res.status(200).json({ perros: todos, total: todos.length });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
