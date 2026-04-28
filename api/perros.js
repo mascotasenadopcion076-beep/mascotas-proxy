@@ -42,9 +42,7 @@ module.exports = async function handler(req, res) {
           .replace(/-/g, ' ')
           .replace(/^\w/, function(c) { return c.toUpperCase(); });
         
-       var fotoHD = bestImg
-  .replace(/\/resizeapi\/[^/]+\//, '/superstatic/528641/art/large_16_9/')
-  .replace(/\/314\/196\//, '/');
+var fotoHD = bestImg;
 
 items.push({
   url: m[1],
