@@ -8,15 +8,35 @@ module.exports = async function handler(req, res) {
     const h2 = await r2.text();
 
     function parsear(html, tipo) {
-      const reLink = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"[^>]*>\s*<[^>]*>\s*<img[^>]*src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
-      const items = [];
-      const vistos = {};
+      const reLink = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
+      const reImg = /data-src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"|src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
       
-      var m;
-      while ((m = reLink.exec(html)) !== null) {
+      const links = [...html.matchAll(reLink)];
+      const imgs = [...html.matchAll(reImg)];
+      
+      const vistos = {};
+      const items = [];
+      var imgIndex = 0;
+      
+      links.forEach(function(m) {
         const id = m[2];
-        if (vistos[id]) continue;
+        if (vistos[id]) return;
         vistos[id] = true;
+        
+        // buscar la imagen que está cerca de este link en el HTML
+        const linkPos = m.index;
+        var bestImg = null;
+        var bestDist = Infinity;
+        
+        imgs.forEach(function(img) {
+          const dist = Math.abs(img.index - linkPos);
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestImg = img[1] || img[2];
+          }
+        });
+        
+        if (!bestImg) return;
         
         const nombre = m[3]
           .replace(/-/g, ' ')
@@ -24,11 +44,12 @@ module.exports = async function handler(req, res) {
         
         items.push({
           url: m[1],
-          foto: m[4],
+          foto: bestImg,
           nombre: nombre,
           tipo: tipo
         });
-      }
+      });
+      
       return items;
     }
 
