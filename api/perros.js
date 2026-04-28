@@ -13,21 +13,39 @@ export default async function handler(req, res) {
       resGatos.text()
     ]);
 
-    function parsear(html, tipo, seccion) {
-      const matches = [...html.matchAll(/href="(\/[^"]*\/i\/(\d+)\/[^"]+)"/g)];
-      const imgMatches = [...html.matchAll(/src="(https:\/\/cmsphoto[^"]+)"/g)];
-      const nameMatches = [...html.matchAll(/alt="([^"]+)"/g)];
-      return matches.slice(0, 30).map((m, i) => ({
-        url: m[1],
-        id: m[2],
-        foto: imgMatches[i]?.[1] || '',
-        nombre: nameMatches[i]?.[1] || tipo,
-        tipo: tipo
-      })).filter(p => p.foto);
+    function parsear(html, tipo) {
+      const parser = new (require('node-html-parser').parse || Object)(html);
+      const items = [];
+      const linkRegex = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
+      const imgRegex = /src="(https:\/\/cmsphoto\.ww-cdn\.com\/superstatic[^"]+)"/g;
+      const titleRegex = /title="([^"]+)"/g;
+      
+      const links = [...html.matchAll(linkRegex)];
+      const imgs  = [...html.matchAll(/src="(https:\/\/cmsphoto\.ww-cdn\.com\/superstatic[^"]+large_16_9[^"]+)"/g)];
+      
+      // Nombre desde el slug de la URL
+      links.forEach((m, i) => {
+        const slug = m[3];
+        const nombre = slug
+          .replace(/^copia-de-/, '')
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, l => l.toUpperCase());
+        
+        if (imgs[i]?.1]) {
+          items.push({
+            url: m[1],
+            id: m[2],
+            foto: imgs[i][1],
+            nombre: nombre,
+            tipo: tipo
+          });
+        }
+      });
+      return items;
     }
 
-    const perros = parsear(htmlPerros, 'perro', 'perros-en-adopcion');
-    const gatos  = parsear(htmlGatos,  'gato',  'gatos-en-adopcion');
+    const perros = parsear(htmlPerros, 'perro');
+    const gatos  = parsear(htmlGatos,  'gato');
     const todos  = [...perros, ...gatos].sort(() => Math.random() - 0.5);
 
     res.status(200).json({ perros: todos, total: todos.length });
