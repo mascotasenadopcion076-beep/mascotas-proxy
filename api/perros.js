@@ -7,58 +7,49 @@ module.exports = async function handler(req, res) {
     const h1 = await r1.text();
     const h2 = await r2.text();
 
-    function parsear(html, tipo) {
+    function getLinks(html, tipo) {
+      const re = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
       const vistos = {};
-      const items = [];
-      
-      // Buscar cada bloque de item: link + título + imagen juntos
-      const bloqueRe = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/[^"]+)"[\s\S]{0,500}?<(?:h\d|div|span)[^>]*class="[^"]*(?:title|nombre|name)[^"]*"[^>]*>([\s\S]{0,100}?)<\/(?:h\d|div|span)>[\s\S]{0,500}?src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
-      
+      const links = [];
       var m;
-      while ((m = bloqueRe.exec(html)) !== null) {
-        const id = m[2];
-        if (vistos[id]) continue;
-        vistos[id] = true;
-        
-        const nombre = m[3].replace(/<[^>]+>/g, '').trim();
-        if (!nombre) continue;
-        
-        items.push({
-          url: m[1],
-          foto: m[4],
-          nombre: nombre,
-          tipo: tipo
-        });
+      while ((m = re.exec(html)) !== null) {
+        if (vistos[m[2]]) continue;
+        vistos[m[2]] = true;
+        links.push({ url: m[1], id: m[2], slug: m[3], tipo });
       }
-      
-      // Fallback: si no encontró nada con el método anterior, usar slug
-      if (items.length === 0) {
-        const reLink = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
-        const reImg = /src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
-        const links = [...html.matchAll(reLink)];
-        const imgs = [...html.matchAll(reImg)];
-        
-        links.forEach(function(lm, i) {
-          const id = lm[2];
-          if (vistos[id] || !imgs[i]) return;
-          vistos[id] = true;
-          items.push({
-            url: lm[1],
-            foto: imgs[i][1],
-            nombre: lm[3].replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase()),
-            tipo: tipo
-          });
-        });
-      }
-      
-      return items;
+      return links;
     }
 
-    var perros = parsear(h1, 'perro');
-    var gatos = parsear(h2, 'gato');
-    var todos = perros.concat(gatos).sort(function() { return Math.random() - 0.5; });
+    async function fetchPerfil(item) {
+      try {
+        const r = await fetch('https://www.mascotasenadopcion.com' + item.url);
+        const html = await r.text();
+        
+        // Buscar título
+        const titleM = html.match(/<h1[^>]*>([\s\S]{0,100}?)<\/h1>/);
+        const nombre = titleM 
+          ? titleM[1].replace(/<[^>]+>/g, '').trim()
+          : item.slug.replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase());
+        
+        // Buscar foto principal
+        const imgM = html.match(/src="(https:\/\/cmsphoto\.ww-cdn\.com\/superstatic[^"]+)"/);
+        const foto = imgM ? imgM[1] : null;
+        
+        if (!foto) return null;
+        return { url: item.url, nombre, foto, tipo: item.tipo };
+      } catch(e) {
+        return null;
+      }
+    }
+
+    const links1 = getLinks(h1, 'perro').slice(0, 20);
+    const links2 = getLinks(h2, 'gato').slice(0, 15);
+    const todos = [...links1, ...links2];
+
+    const results = await Promise.all(todos.map(fetchPerfil));
+    const perros = results.filter(Boolean).sort(() => Math.random() - 0.5);
     
-    res.status(200).json({ perros: todos, total: todos.length });
+    res.status(200).json({ perros, total: perros.length });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
