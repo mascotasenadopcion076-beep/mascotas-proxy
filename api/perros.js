@@ -7,6 +7,7 @@ module.exports = async function handler(req, res) {
     const h1 = await r1.text();
     const h2 = await r2.text();
 
+  
     function parsear(html, tipo) {
       const reLink = /href="(\/(?:perros|gatos)-en-adopcion\/i\/(\d+)\/([^"]+))"/g;
       const reImg = /data-src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"|src="(https:\/\/cmsphoto\.ww-cdn\.com[^"]+)"/g;
