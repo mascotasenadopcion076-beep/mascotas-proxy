@@ -42,12 +42,16 @@ module.exports = async function handler(req, res) {
           .replace(/-/g, ' ')
           .replace(/^\w/, function(c) { return c.toUpperCase(); });
         
-        items.push({
-          url: m[1],
-          foto: bestImg,
-          nombre: nombre,
-          tipo: tipo
-        });
+       var fotoHD = bestImg
+  .replace(/\/resizeapi\/[^/]+\//, '/superstatic/528641/art/large_16_9/')
+  .replace(/\/314\/196\//, '/');
+
+items.push({
+  url: m[1],
+  foto: fotoHD,
+  nombre: nombre,
+  tipo: tipo
+});
       });
       
       return items;
